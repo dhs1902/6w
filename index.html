@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASCII Video Art</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: monospace;
+      flex-direction: column;
+    }
+    #asciiArt {
+      white-space: pre;
+      line-height: 1em;
+      font-size: 8px;
+      user-select: none;
+      color: #fff;
+    }
+    canvas {
+      display: none;
+    }
+    #controls {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="asciiArt"></div>
+  <canvas id="videoCanvas"></canvas>
+
+  <div id="controls">
+    <label for="densityRange">Pixel Density:</label>
+    <input type="range" id="densityRange" min="1" max="50" value="10"> 
+    <br>
+    <label for="colorPicker">Canvas Color:</label>
+    <input type="color" id="colorPicker" value="#000000">
+    <br>
+    <label for="volumeRange">Volume:</label>
+    <input type="range" id="volumeRange" min="0" max="100" value="50">
+    <br>
+    <button id="toggleMusic">Play/Pause Music</button>
+    <input type="file" id="videoInput" accept="video/*" style="display: block; margin-top: 10px;">
+  </div>
+
+  <audio id="backgroundMusic" src="lust.mp3" loop></audio> 
+
+  <script>
+    const asciiChars = ['@', '#', 'S', '%', '?', '*', '+', ';', ':', ',', '.'];
+    const videoCanvas = document.getElementById('videoCanvas');
+    const ctx = videoCanvas.getContext('2d');
+    const asciiArtDiv = document.getElementById('asciiArt');
+    const videoInput = document.getElementById('videoInput');
+    const densityRange = document.getElementById('densityRange');
+    const colorPicker = document.getElementById('colorPicker');
+    const volumeRange = document.getElementById('volumeRange');
+    const backgroundMusic = document.getElementById('backgroundMusic');
+    const toggleMusicButton = document.getElementById('toggleMusic');
+
+    let pixelDensity = parseInt(densityRange.value, 10);
+
+   
+    toggleMusicButton.addEventListener('click', () => {
+      if (backgroundMusic.paused) {
+        backgroundMusic.play();
+      } else {
+        backgroundMusic.pause();
+      }
+    });
+
+    
+    volumeRange.addEventListener('input', function() {
+      backgroundMusic.volume = volumeRange.value / 100;
+    });
+
+    
+    colorPicker.addEventListener('input', function(event) {
+      asciiArtDiv.style.backgroundColor = event.target.value;
+    });
+
+    densityRange.addEventListener('input', function(event) {
+      pixelDensity = parseInt(event.target.value, 10);  
+    });
+
+    videoInput.addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(file);
+        video.play();  
+        video.muted = true;  
+        video.loop = true;  
+        
+        video.addEventListener('play', function() {
+          videoCanvas.width = video.videoWidth;
+          videoCanvas.height = video.videoHeight;
+
+          requestAnimationFrame(renderFrame);
+        });
+
+        function renderFrame() {
+          if (!video.paused && !video.ended) {
+            ctx.drawImage(video, 0, 0, videoCanvas.width / pixelDensity, videoCanvas.height / pixelDensity);
+            const imageData = ctx.getImageData(0, 0, videoCanvas.width / pixelDensity, videoCanvas.height / pixelDensity);
+            const asciiFrame = convertToASCII(imageData);
+            asciiArtDiv.innerHTML = asciiFrame;
+            requestAnimationFrame(renderFrame);
+          }
+        }
+
+        function convertToASCII(imageData) {
+          let asciiStr = '';
+          for (let y = 0; y < imageData.height; y++) {
+            for (let x = 0; x < imageData.width; x++) {
+              const index = (y * imageData.width + x) * 4;
+              const r = imageData.data[index];
+              const g = imageData.data[index + 1];
+              const b = imageData.data[index + 2];
+              const brightness = (r + g + b) / 3;
+              const charIndex = Math.floor((brightness / 255) * (asciiChars.length - 1));
+              asciiStr += `<span style="color: rgb(${r},${g},${b});">${asciiChars[charIndex]}</span>`;
+            }
+            asciiStr += '<br>';
+          }
+          return asciiStr;
+        }
+      }
+    });
+
+    
+    asciiArtDiv.addEventListener('mousemove', function(event) {
+      const rect = asciiArtDiv.getBoundingClientRect();  
+      const mouseX = event.clientX - rect.left;  
+      const mouseY = event.clientY - rect.top;   
+
+      const elements = asciiArtDiv.getElementsByTagName('span');
+      const hoverIndex = Math.floor(mouseX / 8) + Math.floor(mouseY / 8) * videoCanvas.width;  
+
+      if (hoverIndex < elements.length) {
+        elements[hoverIndex].style.color = 'red';  
+      }
+    });
+
+    
+    asciiArtDiv.addEventListener('click', function(event) {
+      const rect = asciiArtDiv.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+
+      const elements = asciiArtDiv.getElementsByTagName('span');
+      const hoverIndex = Math.floor(mouseX / 8) + Math.floor(mouseY / 8) * videoCanvas.width;
+
+      for (let i = 0; i < 10; i++) {
+        if (hoverIndex + i < elements.length) {
+          elements[hoverIndex + i].style.transition = 'opacity 1s';  
+          elements[hoverIndex + i].style.opacity = '0';  
+      }
+    };
+  </script>
+
+</body>
+</html>
